@@ -1910,34 +1910,45 @@
     function getAIAssistantReply(message) {
       const normalizedMessage = message.toLowerCase();
       const matchedProduct = products.find(product => normalizedMessage.includes(product.name.toLowerCase()) || product.name.toLowerCase().split(' ').some(word => word.length > 4 && normalizedMessage.includes(word)));
-      const closing = 'Mau aku bantu lanjut sampai checkout, Kak?';
-
-      if (/(produk|katalog|barang|rekomendasi)/.test(normalizedMessage)) {
-        return `Saat ini 8Shop punya ${products.length} produk dari Elektronik, Pakaian, Aksesoris, Kuliner, dan Alat Kecantikan. ${closing}`;
+      if (/^(hai|halo|hi|hello|pagi|siang|sore|malam)\b/.test(normalizedMessage)) {
+        return 'Halo Kak! Saya siap membantu soal produk, stok, pesanan, pembayaran COD, voucher, pengiriman, atau pengembalian barang.';
       }
-      if (/(stok|tersedia|ready|habis|kosong)/.test(normalizedMessage)) {
-        if (matchedProduct) return matchedProduct.stock > 0 ? `${matchedProduct.name} masih ready ${matchedProduct.stock} pcs dengan harga ${formatIDR(matchedProduct.price)}. ${closing}` : `${matchedProduct.name} sedang kosong, Kak. Aku bisa bantu carikan alternatif yang mirip. ${closing}`;
-        return 'Boleh sebutkan nama produknya, Kak, supaya aku cek stoknya langsung dari katalog. Kalau kosong, aku bantu carikan alternatif. ' + closing;
+      if (/(voucher|kupon|kode diskon|promo)/.test(normalizedMessage)) {
+        return 'Gunakan kode voucher gilang09 saat checkout untuk diskon 10% dengan maksimal potongan Rp50.000.';
       }
-      if (/(pesanan|order|lacak|status paket|tracking)/.test(normalizedMessage)) {
-        return userOrders.length ? `Kakak punya ${userOrders.length} pesanan. Klik menu Pesanan Saya untuk melihat status terbaru paket. ${closing}` : `Belum ada pesanan aktif di akun Kakak. Setelah checkout, status paket akan muncul di menu Pesanan Saya. ${closing}`;
+      if (/(retur|return|kembali|pengembalian|rusak|cacat|tidak sesuai)/.test(normalizedMessage)) {
+        return 'Untuk mengembalikan barang, buka menu Pesanan Saya setelah paket berstatus Sudah Sampai. Pilih Ajukan Pengembalian, jelaskan masalah, lalu wajib lampirkan foto atau video sebagai bukti.';
       }
       if (/(bayar|pembayaran|payment|qris|transfer|cod)/.test(normalizedMessage)) {
-        return 'Pembayaran saat ini hanya tersedia melalui COD (Bayar di Tempat). ' + closing;
+        return 'Pembayaran di 8Shop saat ini hanya tersedia melalui COD atau Bayar di Tempat.';
+      }
+      if (/(pesanan|order|lacak|status paket|tracking)/.test(normalizedMessage)) {
+        return userOrders.length
+          ? `Kakak punya ${userOrders.length} pesanan. Buka menu Pesanan Saya untuk melihat status paket terbaru.`
+          : 'Belum ada pesanan aktif. Setelah checkout, pesanan dapat dipantau melalui menu Pesanan Saya.';
       }
       if (/(kirim|pengiriman|ongkir|paket|delivery)/.test(normalizedMessage)) {
-        return 'Pesanan bisa dipantau melalui menu Pesanan Saya. Gunakan voucher gilang09 untuk diskon 10% maksimal Rp50.000. ' + closing;
+        return 'Status pengiriman dapat dipantau melalui menu Pesanan Saya. Paket akan melalui tahap dikemas, perjalanan, lalu sampai.';
+      }
+      if (/(stok|tersedia|ready|habis|kosong)/.test(normalizedMessage)) {
+        if (!matchedProduct) return 'Sebutkan nama produknya agar saya bisa mengecek stoknya.';
+        return matchedProduct.stock > 0
+          ? `${matchedProduct.name} masih tersedia ${matchedProduct.stock} pcs dengan harga ${formatIDR(matchedProduct.price)}.`
+          : `${matchedProduct.name} sedang habis. Saya bisa membantu mencari produk lain yang serupa.`;
+      }
+      if (matchedProduct && /(harga|berapa|detail|produk|barang|beli|pesan)/.test(normalizedMessage)) {
+        return `${matchedProduct.name} tersedia ${matchedProduct.stock} pcs dengan harga ${formatIDR(matchedProduct.price)}. Produk ini termasuk kategori ${matchedProduct.category}.`;
+      }
+      if (/(produk|katalog|barang|rekomendasi)/.test(normalizedMessage)) {
+        return `Katalog 8Shop memiliki ${products.length} produk dari kategori Elektronik, Pakaian, Aksesoris, Kuliner, dan Alat Kecantikan.`;
       }
       if (/(akun|login|daftar|register|masuk)/.test(normalizedMessage)) {
-        return 'Kakak bisa masuk atau daftar lewat tombol Masuk / Daftar di bagian atas. Akun diperlukan sebelum melakukan checkout. ' + closing;
+        return 'Silakan gunakan tombol Masuk / Daftar di bagian atas. Akun diperlukan sebelum melakukan checkout.';
       }
       if (/(kendala|bug|error|masalah|bantuan)/.test(normalizedMessage)) {
-        return 'Waduh, jangan khawatir Kak. Coba jelaskan kendalanya atau hubungi CS via WhatsApp agar bisa dibantu lebih lanjut. ' + closing;
+        return 'Mohon jelaskan kendala yang dialami, termasuk bagian yang bermasalah, agar saya dapat membantu dengan tepat.';
       }
-      if (matchedProduct) {
-        return `${matchedProduct.name} tersedia ${matchedProduct.stock} pcs dengan harga ${formatIDR(matchedProduct.price)}. Aku bisa bantu cek detail lainnya, Kak. ${closing}`;
-      }
-      return 'Siap Kak! Aku bisa bantu soal produk, stok, pesanan, pembayaran, pengiriman, akun, atau kendala aplikasi. Tulis pertanyaanmu ya. ' + closing;
+      return 'Saya belum memahami pertanyaannya. Silakan tanyakan nama produk, stok, harga, pesanan, pembayaran COD, voucher, pengiriman, atau pengembalian barang.';
     }
 
     function sendAIMessage() {
