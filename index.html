@@ -556,9 +556,9 @@
           <textarea id="returnNote" rows="3" required placeholder="Jelaskan masalah barang yang diterima..." class="w-full px-3 py-2 text-xs border rounded-xl focus:border-amber-500 focus:outline-none"></textarea>
         </div>
         <div>
-          <label for="returnProof" class="block text-xs font-semibold text-slate-700 mb-1">Bukti Foto atau Video <span class="text-rose-500">(wajib)</span></label>
-          <input type="file" id="returnProof" required accept="image/*,video/*" class="w-full px-3 py-2 text-xs border rounded-xl file:mr-3 file:border-0 file:bg-amber-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-amber-700">
-          <p class="text-[11px] text-slate-400 mt-1">Lampirkan foto atau video barang rusak/tidak sesuai.</p>
+          <label for="returnProof" class="block text-xs font-semibold text-slate-700 mb-1">Video Unboxing <span class="text-rose-500">(wajib)</span></label>
+          <input type="file" id="returnProof" required accept="video/*" class="w-full px-3 py-2 text-xs border rounded-xl file:mr-3 file:border-0 file:bg-amber-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-amber-700">
+          <p class="text-[11px] text-slate-400 mt-1">Lampirkan video unboxing yang memperlihatkan kondisi barang saat paket dibuka.</p>
         </div>
         <button type="submit" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-sm transition flex items-center justify-center gap-2">
           <i class="fa-solid fa-paper-plane"></i> Kirim Pengajuan
@@ -1709,8 +1709,8 @@
       }
 
       const proofFile = document.getElementById('returnProof').files[0];
-      if (!proofFile || (!proofFile.type.startsWith('image/') && !proofFile.type.startsWith('video/'))) {
-        showToast('Bukti foto atau video wajib dilampirkan.', 'error');
+      if (!proofFile || !proofFile.type.startsWith('video/')) {
+        showToast('Video unboxing wajib dilampirkan untuk pengembalian.', 'error');
         return;
       }
 
@@ -1719,6 +1719,7 @@
         note: document.getElementById('returnNote').value.trim(),
         proofName: proofFile.name,
         proofType: proofFile.type,
+        proofLabel: 'Video unboxing',
         status: 'Menunggu ditinjau',
         submittedAt: new Date().toLocaleString('id-ID')
       };
@@ -1816,7 +1817,7 @@
                 <div class="pt-2 border-t border-amber-100 text-[11px] text-amber-700">
                   <strong>Pengembalian:</strong> ${order.returnRequest.status}<br>
                   Alasan: ${order.returnRequest.reason}<br>
-                  Bukti: ${order.returnRequest.proofName}
+                  Bukti: ${order.returnRequest.proofLabel} (${order.returnRequest.proofName})
                 </div>
               ` : ''}
               <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
@@ -1910,45 +1911,34 @@
     function getAIAssistantReply(message) {
       const normalizedMessage = message.toLowerCase();
       const matchedProduct = products.find(product => normalizedMessage.includes(product.name.toLowerCase()) || product.name.toLowerCase().split(' ').some(word => word.length > 4 && normalizedMessage.includes(word)));
-      if (/^(hai|halo|hi|hello|pagi|siang|sore|malam)\b/.test(normalizedMessage)) {
-        return 'Halo Kak! Saya siap membantu soal produk, stok, pesanan, pembayaran COD, voucher, pengiriman, atau pengembalian barang.';
-      }
-      if (/(voucher|kupon|kode diskon|promo)/.test(normalizedMessage)) {
-        return 'Gunakan kode voucher gilang09 saat checkout untuk diskon 10% dengan maksimal potongan Rp50.000.';
-      }
-      if (/(retur|return|kembali|pengembalian|rusak|cacat|tidak sesuai)/.test(normalizedMessage)) {
-        return 'Untuk mengembalikan barang, buka menu Pesanan Saya setelah paket berstatus Sudah Sampai. Pilih Ajukan Pengembalian, jelaskan masalah, lalu wajib lampirkan foto atau video sebagai bukti.';
-      }
-      if (/(bayar|pembayaran|payment|qris|transfer|cod)/.test(normalizedMessage)) {
-        return 'Pembayaran di 8Shop saat ini hanya tersedia melalui COD atau Bayar di Tempat.';
-      }
-      if (/(pesanan|order|lacak|status paket|tracking)/.test(normalizedMessage)) {
-        return userOrders.length
-          ? `Kakak punya ${userOrders.length} pesanan. Buka menu Pesanan Saya untuk melihat status paket terbaru.`
-          : 'Belum ada pesanan aktif. Setelah checkout, pesanan dapat dipantau melalui menu Pesanan Saya.';
-      }
-      if (/(kirim|pengiriman|ongkir|paket|delivery)/.test(normalizedMessage)) {
-        return 'Status pengiriman dapat dipantau melalui menu Pesanan Saya. Paket akan melalui tahap dikemas, perjalanan, lalu sampai.';
+      const closing = 'Mau aku bantu lanjut sampai checkout, Kak?';
+
+      if (/(produk|katalog|barang|rekomendasi)/.test(normalizedMessage)) {
+        return `Saat ini 8Shop punya ${products.length} produk dari Elektronik, Pakaian, Aksesoris, Kuliner, dan Alat Kecantikan. ${closing}`;
       }
       if (/(stok|tersedia|ready|habis|kosong)/.test(normalizedMessage)) {
-        if (!matchedProduct) return 'Sebutkan nama produknya agar saya bisa mengecek stoknya.';
-        return matchedProduct.stock > 0
-          ? `${matchedProduct.name} masih tersedia ${matchedProduct.stock} pcs dengan harga ${formatIDR(matchedProduct.price)}.`
-          : `${matchedProduct.name} sedang habis. Saya bisa membantu mencari produk lain yang serupa.`;
+        if (matchedProduct) return matchedProduct.stock > 0 ? `${matchedProduct.name} masih ready ${matchedProduct.stock} pcs dengan harga ${formatIDR(matchedProduct.price)}. ${closing}` : `${matchedProduct.name} sedang kosong, Kak. Aku bisa bantu carikan alternatif yang mirip. ${closing}`;
+        return 'Boleh sebutkan nama produknya, Kak, supaya aku cek stoknya langsung dari katalog. Kalau kosong, aku bantu carikan alternatif. ' + closing;
       }
-      if (matchedProduct && /(harga|berapa|detail|produk|barang|beli|pesan)/.test(normalizedMessage)) {
-        return `${matchedProduct.name} tersedia ${matchedProduct.stock} pcs dengan harga ${formatIDR(matchedProduct.price)}. Produk ini termasuk kategori ${matchedProduct.category}.`;
+      if (/(pesanan|order|lacak|status paket|tracking)/.test(normalizedMessage)) {
+        return userOrders.length ? `Kakak punya ${userOrders.length} pesanan. Klik menu Pesanan Saya untuk melihat status terbaru paket. ${closing}` : `Belum ada pesanan aktif di akun Kakak. Setelah checkout, status paket akan muncul di menu Pesanan Saya. ${closing}`;
       }
-      if (/(produk|katalog|barang|rekomendasi)/.test(normalizedMessage)) {
-        return `Katalog 8Shop memiliki ${products.length} produk dari kategori Elektronik, Pakaian, Aksesoris, Kuliner, dan Alat Kecantikan.`;
+      if (/(bayar|pembayaran|payment|qris|transfer|cod)/.test(normalizedMessage)) {
+        return 'Pembayaran saat ini hanya tersedia melalui COD (Bayar di Tempat). ' + closing;
+      }
+      if (/(kirim|pengiriman|ongkir|paket|delivery)/.test(normalizedMessage)) {
+        return 'Pesanan bisa dipantau melalui menu Pesanan Saya. Gunakan voucher gilang09 untuk diskon 10% maksimal Rp50.000. ' + closing;
       }
       if (/(akun|login|daftar|register|masuk)/.test(normalizedMessage)) {
-        return 'Silakan gunakan tombol Masuk / Daftar di bagian atas. Akun diperlukan sebelum melakukan checkout.';
+        return 'Kakak bisa masuk atau daftar lewat tombol Masuk / Daftar di bagian atas. Akun diperlukan sebelum melakukan checkout. ' + closing;
       }
       if (/(kendala|bug|error|masalah|bantuan)/.test(normalizedMessage)) {
-        return 'Mohon jelaskan kendala yang dialami, termasuk bagian yang bermasalah, agar saya dapat membantu dengan tepat.';
+        return 'Waduh, jangan khawatir Kak. Coba jelaskan kendalanya atau hubungi CS via WhatsApp agar bisa dibantu lebih lanjut. ' + closing;
       }
-      return 'Saya belum memahami pertanyaannya. Silakan tanyakan nama produk, stok, harga, pesanan, pembayaran COD, voucher, pengiriman, atau pengembalian barang.';
+      if (matchedProduct) {
+        return `${matchedProduct.name} tersedia ${matchedProduct.stock} pcs dengan harga ${formatIDR(matchedProduct.price)}. Aku bisa bantu cek detail lainnya, Kak. ${closing}`;
+      }
+      return 'Siap Kak! Aku bisa bantu soal produk, stok, pesanan, pembayaran, pengiriman, akun, atau kendala aplikasi. Tulis pertanyaanmu ya. ' + closing;
     }
 
     function sendAIMessage() {
