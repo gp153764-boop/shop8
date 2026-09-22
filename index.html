@@ -69,7 +69,7 @@
 
   <!-- Top Notification Bar -->
   <div class="bg-pink-600 text-white text-xs py-1.5 px-4 text-center font-medium">
-    🎉 Gratis Ongkir ke Seluruh Indonesia untuk pesanan pertama! Gunakan kode: <span class="underline font-bold">8SHOP</span>
+    🎉 Diskon 10% untuk pesanan Anda! Gunakan kode voucher: <span class="underline font-bold">gilang09</span>
   </div>
 
   <!-- Main Header / Navbar -->
@@ -447,6 +447,26 @@
         </div>
 
         <div>
+          <label for="coVoucher" class="block text-xs font-semibold text-slate-700 mb-1">Kode Voucher</label>
+          <div class="flex gap-2">
+            <input type="text" id="coVoucher" placeholder="Contoh: gilang09" class="min-w-0 flex-1 px-3 py-2 text-xs uppercase border rounded-xl focus:border-pink-500 focus:outline-none">
+            <button type="button" onclick="applyVoucher()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition">Terapkan</button>
+          </div>
+          <p id="voucherMessage" class="text-[11px] mt-1 text-slate-400">Gunakan gilang09 untuk diskon 10% maksimal Rp50.000.</p>
+        </div>
+
+        <div class="border-t border-slate-100 pt-3 space-y-1 text-xs">
+          <div class="flex justify-between text-slate-500">
+            <span>Subtotal</span>
+            <span id="checkoutSubtotalDisplay">Rp 0</span>
+          </div>
+          <div class="flex justify-between text-emerald-600">
+            <span>Diskon Voucher</span>
+            <span id="checkoutDiscountDisplay">- Rp 0</span>
+          </div>
+        </div>
+
+        <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Pembeli / Penerima</label>
           <input type="text" id="coName" required class="w-full px-3 py-2 text-xs border rounded-xl focus:border-pink-500 focus:outline-none">
         </div>
@@ -501,6 +521,49 @@
       <div class="p-6 overflow-y-auto flex-1 space-y-4" id="ordersListContainer">
         <!-- Injected via JavaScript -->
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL PENGEMBALIAN BARANG -->
+  <div id="returnModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-200 px-4">
+    <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 transform scale-95 transition-all duration-200">
+      <div class="p-5 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-rotate-left"></i>
+          </div>
+          <h3 class="font-bold text-slate-800 text-base">Ajukan Pengembalian</h3>
+        </div>
+        <button onclick="closeReturnModal()" class="w-7 h-7 text-slate-400 hover:text-slate-600 rounded-full flex items-center justify-center hover:bg-slate-200 transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="formReturn" onsubmit="handleReturnSubmit(event)" class="p-6 space-y-4">
+        <p class="text-xs text-slate-500">Ajukan pengembalian jika barang yang diterima tidak sesuai pesanan atau mengalami masalah.</p>
+        <div>
+          <label for="returnReason" class="block text-xs font-semibold text-slate-700 mb-1">Alasan Pengembalian</label>
+          <select id="returnReason" required class="w-full px-3 py-2 text-xs border rounded-xl bg-white focus:border-amber-500 focus:outline-none">
+            <option value="">Pilih alasan</option>
+            <option value="Barang tidak sesuai pesanan">Barang tidak sesuai pesanan</option>
+            <option value="Barang rusak atau cacat">Barang rusak atau cacat</option>
+            <option value="Jumlah barang tidak sesuai">Jumlah barang tidak sesuai</option>
+            <option value="Alasan lainnya">Alasan lainnya</option>
+          </select>
+        </div>
+        <div>
+          <label for="returnNote" class="block text-xs font-semibold text-slate-700 mb-1">Detail Masalah</label>
+          <textarea id="returnNote" rows="3" required placeholder="Jelaskan masalah barang yang diterima..." class="w-full px-3 py-2 text-xs border rounded-xl focus:border-amber-500 focus:outline-none"></textarea>
+        </div>
+        <div>
+          <label for="returnProof" class="block text-xs font-semibold text-slate-700 mb-1">Bukti Foto atau Video <span class="text-rose-500">(wajib)</span></label>
+          <input type="file" id="returnProof" required accept="image/*,video/*" class="w-full px-3 py-2 text-xs border rounded-xl file:mr-3 file:border-0 file:bg-amber-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-amber-700">
+          <p class="text-[11px] text-slate-400 mt-1">Lampirkan foto atau video barang rusak/tidak sesuai.</p>
+        </div>
+        <button type="submit" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-sm transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-paper-plane"></i> Kirim Pengajuan
+        </button>
+      </form>
     </div>
   </div>
 
@@ -1031,6 +1094,9 @@
     let userOrders = [];    // Menyimpan daftar paket dan statusnya
     let selectedCategory = 'semua';
     let searchQuery = '';
+    let appliedVoucher = '';
+    let voucherDiscount = 0;
+    let currentReturnOrderId = null;
 
     const DEVELOPER_WHATSAPP = "6283178089019";
     const STORE_NAME = '8Shop';
@@ -1425,12 +1491,45 @@
       const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-      document.getElementById('checkoutTotalDisplay').innerText = formatIDR(subtotal);
+      appliedVoucher = '';
+      voucherDiscount = 0;
+      document.getElementById('coVoucher').value = '';
+      document.getElementById('voucherMessage').innerText = 'Gunakan gilang09 untuk diskon 10% maksimal Rp50.000.';
+      document.getElementById('voucherMessage').className = 'text-[11px] mt-1 text-slate-400';
+      updateCheckoutTotal(subtotal);
       document.getElementById('checkoutItemsCount').innerText = `${totalItems} Barang`;
 
       const modal = document.getElementById('checkoutModal');
       modal.classList.remove('opacity-0', 'pointer-events-none');
       modal.firstElementChild.classList.remove('scale-95');
+    }
+
+    function updateCheckoutTotal(subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)) {
+      const total = subtotal - voucherDiscount;
+      document.getElementById('checkoutSubtotalDisplay').innerText = formatIDR(subtotal);
+      document.getElementById('checkoutDiscountDisplay').innerText = `- ${formatIDR(voucherDiscount)}`;
+      document.getElementById('checkoutTotalDisplay').innerText = formatIDR(total);
+    }
+
+    function applyVoucher() {
+      const voucherInput = document.getElementById('coVoucher');
+      const voucherMessage = document.getElementById('voucherMessage');
+      const voucher = voucherInput.value.trim().toUpperCase();
+      const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+      if (voucher === 'GILANG09') {
+        appliedVoucher = voucher;
+        voucherDiscount = Math.min(Math.round(subtotal * 0.1), 50000);
+        voucherMessage.innerText = `Voucher berhasil digunakan. Hemat ${formatIDR(voucherDiscount)}.`;
+        voucherMessage.className = 'text-[11px] mt-1 text-emerald-600 font-semibold';
+      } else {
+        appliedVoucher = '';
+        voucherDiscount = 0;
+        voucherMessage.innerText = 'Kode voucher tidak valid. Gunakan gilang09.';
+        voucherMessage.className = 'text-[11px] mt-1 text-rose-600 font-semibold';
+      }
+
+      updateCheckoutTotal(subtotal);
     }
 
     function closeCheckoutModal() {
@@ -1449,6 +1548,7 @@
       const address = document.getElementById('coAddress').value;
 
       const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const total = subtotal - voucherDiscount;
 
       // Buat data pesanan baru dengan status default: Sedang Dikemas
       const newOrder = {
@@ -1459,7 +1559,10 @@
         phone: phone,
         paymentMethod: payment,
         address: address,
-        total: subtotal,
+        subtotal: subtotal,
+        discount: voucherDiscount,
+        voucher: appliedVoucher,
+        total: total,
         items: [...cart],
         status: 'dikemas'
       };
@@ -1572,6 +1675,59 @@
       renderOrdersList();
     }
 
+    function openReturnModal(orderId) {
+      const order = userOrders.find(item => item.orderId === orderId);
+      if (!order || order.status !== 'sampai') {
+        showToast('Pengembalian hanya bisa diajukan setelah paket sampai.', 'error');
+        return;
+      }
+      if (order.returnRequest) {
+        showToast('Pengajuan pengembalian untuk pesanan ini sudah dibuat.', 'info');
+        return;
+      }
+
+      currentReturnOrderId = orderId;
+      document.getElementById('formReturn').reset();
+      const modal = document.getElementById('returnModal');
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      modal.firstElementChild.classList.remove('scale-95');
+    }
+
+    function closeReturnModal() {
+      const modal = document.getElementById('returnModal');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      modal.firstElementChild.classList.add('scale-95');
+      currentReturnOrderId = null;
+    }
+
+    function handleReturnSubmit(e) {
+      e.preventDefault();
+      const order = userOrders.find(item => item.orderId === currentReturnOrderId);
+      if (!order || order.returnRequest) {
+        closeReturnModal();
+        return;
+      }
+
+      const proofFile = document.getElementById('returnProof').files[0];
+      if (!proofFile || (!proofFile.type.startsWith('image/') && !proofFile.type.startsWith('video/'))) {
+        showToast('Bukti foto atau video wajib dilampirkan.', 'error');
+        return;
+      }
+
+      order.returnRequest = {
+        reason: document.getElementById('returnReason').value,
+        note: document.getElementById('returnNote').value.trim(),
+        proofName: proofFile.name,
+        proofType: proofFile.type,
+        status: 'Menunggu ditinjau',
+        submittedAt: new Date().toLocaleString('id-ID')
+      };
+
+      closeReturnModal();
+      renderOrdersList();
+      showToast('Pengajuan pengembalian berhasil dikirim.', 'success');
+    }
+
     function renderOrdersList() {
       const container = document.getElementById('ordersListContainer');
 
@@ -1656,6 +1812,13 @@
                 Penerima: <strong>${order.recipient}</strong> (${order.phone})<br>
                 Alamat: ${order.address}
               </div>
+              ${order.returnRequest ? `
+                <div class="pt-2 border-t border-amber-100 text-[11px] text-amber-700">
+                  <strong>Pengembalian:</strong> ${order.returnRequest.status}<br>
+                  Alasan: ${order.returnRequest.reason}<br>
+                  Bukti: ${order.returnRequest.proofName}
+                </div>
+              ` : ''}
               <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
                 <span><i class="fa-solid fa-clock-rotate-left mr-1 text-pink-600"></i> Status diperbarui otomatis per 1 jam</span>
                 <span class="font-semibold text-indigo-600">Estimasi tiba: 2 Jam</span>
@@ -1678,6 +1841,13 @@
                   Sudah Sampai
                 </button>
                 ${order.status === 'sampai' ? `
+                  ${order.returnRequest ? `
+                    <span class="px-2.5 py-1 text-[10px] rounded-lg font-bold bg-amber-50 text-amber-700 border border-amber-200">Retur Diajukan</span>
+                  ` : `
+                    <button onclick="openReturnModal('${order.orderId}')" class="px-2.5 py-1 text-[10px] rounded-lg font-bold border transition bg-white text-amber-700 border-amber-300 hover:bg-amber-50">
+                      Ajukan Pengembalian
+                    </button>
+                  `}
                   <button onclick="openRating('${order.orderId}')" class="px-2.5 py-1 text-[10px] rounded-lg font-bold border transition ${order.rating ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600'}">
                     ${order.rating ? `Rating ${order.rating} ⭐` : 'Beri Rating ⭐'}
                   </button>
@@ -1756,7 +1926,7 @@
         return 'Pembayaran saat ini hanya tersedia melalui COD (Bayar di Tempat). ' + closing;
       }
       if (/(kirim|pengiriman|ongkir|paket|delivery)/.test(normalizedMessage)) {
-        return 'Pesanan bisa dipantau melalui menu Pesanan Saya. Untuk pesanan pertama, gunakan kode gratis ongkir 8SHOP. ' + closing;
+        return 'Pesanan bisa dipantau melalui menu Pesanan Saya. Gunakan voucher gilang09 untuk diskon 10% maksimal Rp50.000. ' + closing;
       }
       if (/(akun|login|daftar|register|masuk)/.test(normalizedMessage)) {
         return 'Kakak bisa masuk atau daftar lewat tombol Masuk / Daftar di bagian atas. Akun diperlukan sebelum melakukan checkout. ' + closing;
@@ -1833,7 +2003,7 @@
       }
 
       if (/(kirim|pengiriman|ongkir|pesan|pesanan|lacak|paket|delivery)/.test(normalizedMessage)) {
-        return 'Pesanan diproses setelah checkout dan statusnya bisa dipantau lewat menu Pesanan Saya. Ada promo gratis ongkir untuk pesanan pertama dengan kode 8SHOP, Kak! ' + closing;
+        return 'Pesanan diproses setelah checkout dan statusnya bisa dipantau lewat menu Pesanan Saya. Gunakan voucher gilang09 untuk diskon 10% maksimal Rp50.000, Kak! ' + closing;
       }
 
       if (matchedProduct) {
